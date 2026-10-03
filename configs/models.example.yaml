@@ -1,0 +1,93 @@
+# StrategyFoundry model routing policy
+#
+# Secrets are supplied through environment variables and MUST NOT be stored here.
+# Model availability and quotas are dynamic. The router should refresh the provider
+# catalog and reject any model not currently marked free.
+
+providers:
+  google:
+    enabled: true
+    api_key_env: GOOGLE_AI
+    free_only: true
+    preferred_tasks:
+      - classification
+      - pine_analysis
+      - report_synthesis
+    preferred_models:
+      - gemini-3.8-flash
+      - gemini-3.6-flash
+
+  nvidia:
+    enabled: true
+    api_key_env: NVIDIA_NIM
+    free_only: true
+    preferred_tasks:
+      - coding_reasoning
+      - pine_repair_analysis
+      - difficult_classification
+    preferred_models:
+      - laguna-xs-2.1
+      - glm-5-3-flash
+      - deepseek-v4.1-flash
+
+  openrouter:
+    enabled: true
+    api_key_env: OPENROUTER_AI
+    free_only: true
+    preferred_tasks:
+      - fallback
+      - generic_reasoning
+      - semantic_labeling
+    preferred_models:
+      - openrouter/free
+
+  local:
+    enabled: false
+    free_only: true
+    preferred_tasks:
+      - emergency_fallback
+      - offline_classification
+    preferred_models: []
+
+routing:
+  order:
+    - google
+    - nvidia
+    - openrouter
+    - local
+
+  max_retries_per_provider: 2
+  exponential_backoff:
+    initial_seconds: 0.5
+    max_seconds: 8
+
+  # Never fall back to a paid model.
+  reject_paid_models: true
+
+  # Keep AI calls bounded so backtesting workers remain the dominant workload.
+  max_concurrent_requests: 8
+
+  # Prefer low-latency models for routine tasks.
+  latency_first: true
+
+  # Promote stronger models only for escalated tasks.
+  escalation:
+    enabled: true
+    max_attempts: 2
+
+task_profiles:
+  classification:
+    max_output_tokens: 1200
+    temperature: 0
+
+  pine_analysis:
+    max_output_tokens: 3000
+    temperature: 0
+
+  repair_advice:
+    max_output_tokens: 2500
+    temperature: 0
+
+  report_synthesis:
+    max_output_tokens: 2500
+    temperature: 0.1
